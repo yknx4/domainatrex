@@ -25,6 +25,16 @@ defmodule Domainatrex do
 
   string = @public_suffix_list |> String.split("// ===END ICANN DOMAINS===") |> List.first
   custom_suffixes = Application.get_env(:domainatrex, :custom_suffixes, [])
+
+  with true <- Application.get_env(:domainatrex, :allow_unicode_domains, false) do
+    defp match(["xn--" <> tld | tail]) do
+      format_response(["xn--#{tld}"], tail)
+    end
+    defp match([<<initial::utf8, rest::utf8>> | tail]) when initial > 127 or initial < 0 do
+      format_response([<<initial::utf8>> <> <<rest::utf8>>], tail)
+    end
+  end
+
   suffixes =
     string
     |> String.split("\n")
