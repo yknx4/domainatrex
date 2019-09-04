@@ -9,6 +9,7 @@ defmodule Domainatrex do
 
   :inets.start
   :ssl.start
+
   case :httpc.request(:get, {@public_suffix_list_url, []}, [], []) do
     {:ok, {_, _, string}} ->
       @public_suffix_list to_string(string)
@@ -31,12 +32,21 @@ defmodule Domainatrex do
     |> String.split("// ===END ICANN DOMAINS===")
     |> List.first
   end
+
+  with true <- Application.get_env(:domainatrex, :allow_unicode_domains, false) do
+    defp match(["xn--" <> tld | tail]) do
+      format_response(["xn--#{tld}"], tail)
+    end
+    defp match([<<initial::utf8, rest::utf8>> | tail]) when initial > 127 or initial < 0 do
+      format_response([<<initial::utf8>> <> <<rest::utf8>>], tail)
+    end
+  end
+
   suffixes =
     string
     |> String.split("\n")
     |> Enum.reject(&(&1 == ""))
     |> Enum.reject(&(String.contains?(&1, "//")))
-    |> Enum.reject(&(String.contains?(&1, "*")))
     |> Enum.concat(custom_suffixes)
     |> Enum.map(&(String.split(&1, ".")))
     |> Enum.map(&Enum.reverse/1)
@@ -44,29 +54,54 @@ defmodule Domainatrex do
     |> Enum.reverse
 
   Enum.each(suffixes, fn(suffix) ->
-    case length(suffix) do
-      1 ->
-        defp match([unquote(Enum.at(suffix,0)) | tail] = args) do
-          format_response([Enum.at(args, 0)], tail)
-        end
-      2 ->
-        defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)) | tail] = args) do
-          format_response([Enum.at(args, 0), Enum.at(args, 1)], tail)
-        end
-      3 ->
-        defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)) | tail] = args) do
-          format_response([Enum.at(args, 0), Enum.at(args, 1), Enum.at(args, 2)], tail)
-        end
-      4 ->
-        defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), unquote(Enum.at(suffix,3)) | tail] = args) do
-          format_response([Enum.at(args, 0), Enum.at(args, 1), Enum.at(args, 2), Enum.at(args, 3)], tail)
-        end
-      5 ->
-        defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), unquote(Enum.at(suffix,3)), unquote(Enum.at(suffix,4)) | tail] = args) do
-          format_response([Enum.at(args, 0), Enum.at(args, 1), Enum.at(args, 2), Enum.at(args, 3), Enum.at(args, 4)], tail)
-        end
-      _ ->
-        {:error, "There exists a domain in the list which contains more than 5 dots: #{suffix}"}
+    if List.last(suffix) == "*" do
+      case length(suffix) do
+        2 ->
+          defp match([unquote(Enum.at(suffix,0)), a]) do
+            format_response([unquote(Enum.at(suffix,0))], [a])
+          end
+          defp match([unquote(Enum.at(suffix,0)), a, b]) do
+            format_response([unquote(Enum.at(suffix,0))], [a,b])
+          end
+          defp match([unquote(Enum.at(suffix,0)) | _] = args) do
+            format_response(Enum.slice(args, 0,2), Enum.slice(args, 2, 10))
+          end
+        3 ->
+          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), a]) do
+            format_response([unquote(Enum.at(suffix,0)),unquote(Enum.at(suffix,1))], [a])
+          end
+          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), a, b]) do
+            format_response([unquote(Enum.at(suffix,0)),unquote(Enum.at(suffix,1))], [a, b])
+          end
+          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)) | _] = args) do
+            format_response(Enum.slice(args, 0,3), Enum.slice(args, 3, 10))
+          end
+      end
+    else
+      case length(suffix) do
+        1 ->
+          defp match([unquote(Enum.at(suffix,0)) | tail] = args) do
+            format_response([Enum.at(args, 0)], tail)
+          end
+        2 ->
+          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)) | tail] = args) do
+            format_response([Enum.at(args, 0), Enum.at(args, 1)], tail)
+          end
+        3 ->
+          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)) | tail] = args) do
+            format_response([Enum.at(args, 0), Enum.at(args, 1), Enum.at(args, 2)], tail)
+          end
+        4 ->
+          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), unquote(Enum.at(suffix,3)) | tail] = args) do
+            format_response([Enum.at(args, 0), Enum.at(args, 1), Enum.at(args, 2), Enum.at(args, 3)], tail)
+          end
+        5 ->
+          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), unquote(Enum.at(suffix,3)), unquote(Enum.at(suffix,4)) | tail] = args) do
+            format_response([Enum.at(args, 0), Enum.at(args, 1), Enum.at(args, 2), Enum.at(args, 3), Enum.at(args, 4)], tail)
+          end
+        _ ->
+          {:error, "There exists a domain in the list which contains more than 5 dots: #{suffix}"}
+      end
     end
   end)
 
