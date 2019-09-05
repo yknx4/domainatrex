@@ -53,28 +53,83 @@ defmodule Domainatrex do
     |> Enum.sort_by(&length/1)
     |> Enum.reverse
 
+  exclusions =
+    suffixes
+    |> Enum.filter(&(&1 |> Enum.at(-1) |> String.starts_with?("!")))
+    |> Enum.reduce(%{}, fn (k, acc) ->
+      [head | tail] = Enum.reverse(k)
+      key = tail |> Enum.reverse() |> Enum.join(".")
+      val = head |> String.slice(1..-1)
+      if Map.has_key?(acc, key) do
+        new = [val | Map.get(acc, key)]
+        %{acc | key: new}
+      else
+        Map.put(acc, key, [val])
+      end
+    end)
+
+  suffixes =
+    suffixes
+    |> Enum.reject(&(&1 |> Enum.at(-1) |> String.starts_with?("!")))
+
   Enum.each(suffixes, fn(suffix) ->
     if List.last(suffix) == "*" do
       case length(suffix) do
         2 ->
-          defp match([unquote(Enum.at(suffix,0)), a]) do
-            format_response([unquote(Enum.at(suffix,0))], [a])
-          end
-          defp match([unquote(Enum.at(suffix,0)), a, b]) do
-            format_response([unquote(Enum.at(suffix,0))], [a,b])
-          end
-          defp match([unquote(Enum.at(suffix,0)) | _] = args) do
-            format_response(Enum.slice(args, 0,2), Enum.slice(args, 2, 10))
+          exclude = Map.get(exclusions, Enum.at(suffix,0), [])
+          if exclude != [] do
+            defp match([unquote(Enum.at(suffix,0)), head | tail]) when head in unquote(exclude) do
+              format_response([unquote(Enum.at(suffix,0))], [head | tail])
+            end
+            defp match([unquote(Enum.at(suffix,0)), head | tail]) when head not in unquote(exclude) do
+              format_response([unquote(Enum.at(suffix,0)), head], tail)
+            end
+          else
+            defp match([unquote(Enum.at(suffix,0)), head | tail]) do
+              format_response([unquote(Enum.at(suffix,0)), head], tail)
+            end
           end
         3 ->
-          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), a]) do
-            format_response([unquote(Enum.at(suffix,0)),unquote(Enum.at(suffix,1))], [a])
+          exclude = Map.get(exclusions, "#{Enum.at(suffix,0)}.#{Enum.at(suffix,1)}", [])
+          if exclude != [] do
+            defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), head | tail]) when head in unquote(exclude) do
+              format_response([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1))], [head | tail])
+            end
+            defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), head | tail]) when head not in unquote(exclude) do
+              format_response([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), head], tail)
+            end
+          else
+            defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), head | tail]) do
+              format_response([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), head], tail)
+            end
           end
-          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), a, b]) do
-            format_response([unquote(Enum.at(suffix,0)),unquote(Enum.at(suffix,1))], [a, b])
+        4 ->
+          exclude = Map.get(exclusions, "#{Enum.at(suffix,0)}.#{Enum.at(suffix,1)}.#{Enum.at(suffix,2)}", [])
+          if exclude != [] do
+            defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), head | tail]) when head in unquote(exclude) do
+              format_response([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2))], [head | tail])
+            end
+            defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), head | tail]) when head not in unquote(exclude) do
+              format_response([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), head], tail)
+            end
+          else
+            defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), head | tail]) do
+              format_response([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), head], tail)
+            end
           end
-          defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)) | _] = args) do
-            format_response(Enum.slice(args, 0,3), Enum.slice(args, 3, 10))
+        5 ->
+          exclude = Map.get(exclusions, "#{Enum.at(suffix,0)}.#{Enum.at(suffix,1)}.#{Enum.at(suffix,2)}.#{Enum.at(suffix,3)}", [])
+          if exclude != [] do
+            defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), unquote(Enum.at(suffix,3)), head | tail]) when head in unquote(exclude) do
+              format_response([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), unquote(Enum.at(suffix,3))], [head | tail])
+            end
+            defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), unquote(Enum.at(suffix,3)), head | tail]) when head not in unquote(exclude) do
+              format_response([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), unquote(Enum.at(suffix,3)), head], tail)
+            end
+          else
+            defp match([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), head | tail]) do
+              format_response([unquote(Enum.at(suffix,0)), unquote(Enum.at(suffix,1)), unquote(Enum.at(suffix,2)), unquote(Enum.at(suffix,3)), head], tail)
+            end
           end
       end
     else

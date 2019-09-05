@@ -26,10 +26,27 @@ defmodule DomainatrexTest do
   ## *.bd
   test "domains with wildcard" do
     assert Domainatrex.parse("www.techtunes.com.bd") == {:ok, %{domain: "techtunes", subdomain: "www", tld: "com.bd"}}
-    assert Domainatrex.parse("www.techtunes.bd") == {:ok, %{domain: "techtunes", subdomain: "www", tld: "bd"}}
-    assert Domainatrex.parse("send.kawasaki.jp") == {:ok, %{domain: "send", subdomain: "", tld: "kawasaki.jp"}}
-    assert Domainatrex.parse("www.send.kawasaki.jp") == {:ok, %{domain: "send", subdomain: "www", tld: "kawasaki.jp"}}
+    assert Domainatrex.parse("www.techtunes.bd") == {:ok, %{domain: "www", subdomain: "", tld: "techtunes.bd"}}
+    assert Domainatrex.parse(".send.kawasaki.jp") == {:ok, %{domain: "", subdomain: "", tld: "send.kawasaki.jp"}}
+    assert Domainatrex.parse("www.send.kawasaki.jp") == {:ok, %{domain: "www", subdomain: "", tld: "send.kawasaki.jp"}}
     assert Domainatrex.parse("www.elb.send.kawasaki.jp") == {:ok, %{domain: "elb", subdomain: "www", tld: "send.kawasaki.jp"}}
+
+    assert Domainatrex.parse("www.anything.ck") == {:ok, %{domain: "www", subdomain: "", tld: "anything.ck"}}
+    assert Domainatrex.parse("www2.www.anything2.ck") == {:ok, %{domain: "www", subdomain: "www2", tld: "anything2.ck"}}
+
+    assert Domainatrex.parse(".www.sch.uk") == {:ok, %{domain: "", subdomain: "", tld: "www.sch.uk"}}
+    assert Domainatrex.parse("www2.www.sch.uk") == {:ok, %{domain: "www2", subdomain: "", tld: "www.sch.uk"}}
+    assert Domainatrex.parse("some.host.www2.www.sch.uk") == {:ok, %{domain: "www2", subdomain: "some.host", tld: "www.sch.uk"}}
+  end
+
+  test "domains with wildcard and exclusions" do
+    assert Domainatrex.parse("www.send.kawasaki.jp") == {:ok, %{domain: "www", subdomain: "", tld: "send.kawasaki.jp"}}
+    assert Domainatrex.parse("www.elb.send.kawasaki.jp") == {:ok, %{domain: "elb", subdomain: "www", tld: "send.kawasaki.jp"}}
+    assert Domainatrex.parse("city.kawasaki.jp") == {:ok, %{domain: "city", subdomain: "", tld: "kawasaki.jp"}}
+    assert Domainatrex.parse("www.city.kawasaki.jp") == {:ok, %{domain: "city", subdomain: "www", tld: "kawasaki.jp"}}
+
+    assert Domainatrex.parse("www.ck") == {:ok, %{domain: "www", subdomain: "", tld: "ck"}}
+    assert Domainatrex.parse("www2.www.ck") == {:ok, %{domain: "www", subdomain: "www2", tld: "ck"}}
   end
 
   test "nonsense" do
